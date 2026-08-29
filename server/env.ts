@@ -48,24 +48,26 @@ const untouched = Object.entries(PLACEHOLDERS)
   .map(([key]) => key);
 
 if (untouched.length) {
+  const msg =
+    `Your environment still holds the example values for: ${untouched.join(", ")}. ` +
+    `Set real values in your deployment environment variables.`;
   // eslint-disable-next-line no-console
-  console.error(
-    `\nYour .env still holds the example values for:\n` +
-      untouched.map((key) => `  - ${key}`).join("\n") +
-      `\n\nEdit the .env file in the project root (not .env.example) and put your real values there.` +
-      `\nGenerate a session secret with:` +
-      `\n  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"\n`,
-  );
-  process.exit(1);
+  console.error(msg);
+  // On Vercel/serverless we throw instead of exit so the function can return
+  // a proper 500 response rather than crashing the process silently.
+  if (process.env.VERCEL) throw new Error(msg);
+  else process.exit(1);
 }
 
 const parsed = schema.safeParse(process.env);
 
 if (!parsed.success) {
-  const issues = parsed.error.issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n");
+  const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");
+  const msg = `Invalid environment configuration: ${issues}`;
   // eslint-disable-next-line no-console
-  console.error(`\nInvalid environment configuration:\n${issues}\n\nCopy .env.example to .env and fill in the values.\n`);
-  process.exit(1);
+  console.error(msg);
+  if (process.env.VERCEL) throw new Error(msg);
+  else process.exit(1);
 }
 
 const raw = parsed.data;
