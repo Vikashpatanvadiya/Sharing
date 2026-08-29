@@ -268,6 +268,7 @@ export default function AlbumPage() {
             <>
               {pluralize(album.stats.mediaCount, "item")} ·{" "}
               {pluralize(album.stats.contributorCount, "member")}
+              {album.stats.storageBytes > 0 && ` · ${formatBytes(album.stats.storageBytes)}`}
             </>
           }
           onBack={() => navigate("/")}
@@ -334,11 +335,6 @@ export default function AlbumPage() {
                 {option.label}
               </button>
             ))}
-            {album.stats.storageBytes > 0 && (
-              <span className="ml-auto shrink-0 self-center pl-2 pr-1 text-caption text-muted-foreground">
-                {formatBytes(album.stats.storageBytes)}
-              </span>
-            )}
           </div>
         )}
 

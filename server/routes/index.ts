@@ -7,6 +7,7 @@ import {
   acceptedVideoExtensions,
 } from "../lib/media-types.js";
 import { csrfGuard } from "../middleware/csrf.js";
+import { requestTimeout } from "../middleware/timeout.js";
 import { generalApiLimiter } from "../middleware/rateLimit.js";
 import { albumsRouter } from "./albums.js";
 import { downloadsRouter } from "./downloads.js";
@@ -14,6 +15,7 @@ import { mediaRouter } from "./media.js";
 
 export const apiRouter = Router();
 
+apiRouter.use(requestTimeout());
 apiRouter.use(generalApiLimiter);
 apiRouter.use(csrfGuard);
 

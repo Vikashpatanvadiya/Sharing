@@ -19,7 +19,7 @@ export function DownloadStatus({ job, onDismiss }: DownloadStatusProps) {
   if (job.status === "failed" || job.status === "expired") return null;
 
   return (
-    <div className="fixed bottom-[max(84px,calc(env(safe-area-inset-bottom)+84px))] left-1/2 z-40 w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in rounded-panel border border-border bg-card p-4 shadow-lift">
+    <div className="fixed inset-x-3 bottom-[max(84px,calc(env(safe-area-inset-bottom)+84px))] z-40 mx-auto max-w-md rounded-panel border border-border bg-card p-4 shadow-lift">
       <div className="flex items-start gap-3">
         {isWorking ? (
           <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" />

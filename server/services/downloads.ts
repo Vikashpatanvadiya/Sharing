@@ -197,7 +197,10 @@ async function runJob(jobId: string, items: Media[]): Promise<void> {
         logger.error("zip entry failed", { jobId, mediaId: item.id, error });
       }
       processed += 1;
-      if (processed % 10 === 0 || processed === items.length) {
+      // Small selections deserve per-file feedback; big albums would generate
+      // a needless write per photo, so those report every tenth.
+      const step = items.length <= 25 ? 1 : 10;
+      if (processed % step === 0 || processed === items.length) {
         await db
           .update(downloadJobs)
           .set({ processedCount: processed })
@@ -222,13 +225,16 @@ async function runJob(jobId: string, items: Media[]): Promise<void> {
   } catch (error) {
     logger.error("zip job failed", { jobId, error });
     archive.abort();
+    // The database may be what failed; a best-effort status write still beats
+    // leaving the client polling a job that will never move again.
     await db
       .update(downloadJobs)
       .set({
         status: "failed",
         error: "We could not prepare that download. Please try again.",
       })
-      .where(eq(downloadJobs.id, jobId));
+      .where(eq(downloadJobs.id, jobId))
+      .catch((writeError) => logger.error("could not mark job failed", { jobId, writeError }));
     await fs.rm(storagePath, { force: true }).catch(() => {});
   }
 }
