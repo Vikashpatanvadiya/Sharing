@@ -77,19 +77,19 @@ export function UploadPanel({ open, onOpenChange, upload }: UploadPanelProps) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           className={cn(
-            "rounded-2xl border-2 border-dashed p-6 text-center transition-colors sm:p-8",
-            isDragging ? "border-primary bg-accent/60" : "border-border bg-muted/40",
+            "rounded-panel border-2 border-dashed p-6 text-center transition-colors sm:p-8",
+            isDragging ? "border-brand-indigo bg-accent" : "border-border bg-secondary/60",
           )}
         >
           <CloudUpload className="mx-auto h-9 w-9 text-muted-foreground" />
-          <p className="mt-3 hidden font-medium sm:block">Drag &amp; drop here</p>
-          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">or</p>
+          <p className="mt-3 hidden text-body font-medium sm:block">Drag &amp; drop here</p>
+          <p className="mt-1 hidden text-label text-text-tertiary sm:block">or</p>
           <Button className="mt-3 w-full sm:mt-4 sm:w-auto" onClick={() => inputRef.current?.click()}>
             <ImagePlus className="h-4 w-4" />
             Select photos &amp; videos
           </Button>
           {config && (
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-3 text-caption text-text-tertiary">
               Up to {config.maxImageSizeMb} MB per photo · {config.maxVideoSizeMb} MB per video
             </p>
           )}
@@ -98,7 +98,7 @@ export function UploadPanel({ open, onOpenChange, upload }: UploadPanelProps) {
         {hasQueue && (
           <>
             <UploadSummary upload={upload} />
-            <ul className="max-h-[38vh] space-y-1.5 overflow-y-auto pr-1">
+            <ul className="max-h-[38dvh] space-y-1.5 overflow-y-auto pr-1">
               {snapshot.tasks.map((task) => (
                 <UploadRow key={task.id} task={task} upload={upload} />
               ))}
@@ -115,15 +115,15 @@ function UploadSummary({ upload }: { upload: UploadController }) {
   const inProgress = snapshot.active + snapshot.waiting;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-panel border border-border bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-semibold">
+        <p className="text-label font-semibold">
           {snapshot.isUploading
             ? `Uploading ${Math.min(snapshot.completed + snapshot.active, snapshot.total)} / ${snapshot.total}`
             : `${snapshot.completed} of ${snapshot.total} uploaded`}
         </p>
         {snapshot.speed > 0 && snapshot.isUploading && (
-          <p className="text-xs tabular-nums text-muted-foreground">
+          <p className="text-caption tabular-nums text-text-tertiary">
             {formatSpeed(snapshot.speed)}
           </p>
         )}
@@ -131,11 +131,11 @@ function UploadSummary({ upload }: { upload: UploadController }) {
 
       <Progress value={snapshot.overallProgress} className="mt-2.5" />
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-text-tertiary">
         <span>{snapshot.completed} uploaded</span>
         {inProgress > 0 && <span>{inProgress} remaining</span>}
         {snapshot.duplicates > 0 && (
-          <span className="text-amber-600 dark:text-amber-400">
+          <span className="text-brand-orange">
             {snapshot.duplicates} possible duplicate{snapshot.duplicates === 1 ? "" : "s"}
           </span>
         )}
@@ -168,12 +168,12 @@ function UploadSummary({ upload }: { upload: UploadController }) {
 
 function UploadRow({ task, upload }: { task: UploadTask; upload: UploadController }) {
   return (
-    <li className="rounded-xl border border-border/70 bg-card px-3 py-2.5">
+    <li className="rounded-card border border-border bg-card px-3 py-2.5">
       <div className="flex items-center gap-2.5">
         <StatusIcon task={task} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{task.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="truncate text-label font-medium">{task.name}</p>
+          <p className="truncate text-caption text-text-tertiary">
             <StatusLabel task={task} />
           </p>
         </div>
@@ -198,8 +198,8 @@ function UploadRow({ task, upload }: { task: UploadTask; upload: UploadControlle
       )}
 
       {task.status === "duplicate" && (
-        <div className="mt-2.5 rounded-lg bg-amber-500/10 p-2.5">
-          <p className="text-xs text-amber-700 dark:text-amber-300">
+        <div className="mt-2.5 rounded-card bg-brand-orange/10 p-2.5">
+          <p className="text-caption text-brand-orange">
             This photo appears to already exist in this album
             {task.duplicateOf ? ` as ${task.duplicateOf.originalFilename}` : ""}.
           </p>
@@ -225,7 +225,7 @@ function StatusIcon({ task }: { task: UploadTask }) {
     return <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />;
   }
   if (task.status === "duplicate") {
-    return <Copy className="h-5 w-5 shrink-0 text-amber-500" />;
+    return <Copy className="h-5 w-5 shrink-0 text-brand-orange" />;
   }
   if (task.status === "cancelled") {
     return <X className="h-5 w-5 shrink-0 text-muted-foreground" />;

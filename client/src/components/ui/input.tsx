@@ -7,8 +7,8 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
       type={type}
       ref={ref}
       className={cn(
-        // 16px on mobile stops iOS Safari zooming in when the field is focused.
-        "flex h-12 w-full rounded-xl border border-input bg-background px-4 py-2 text-base transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50",
+        // 16px text keeps iOS Safari from zooming the viewport on focus.
+        "flex h-12 w-full rounded-card border border-input bg-card px-4 text-body font-regular text-foreground transition-colors placeholder:text-muted-foreground focus-visible:border-brand-indigo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}

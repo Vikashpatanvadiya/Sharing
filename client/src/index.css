@@ -2,67 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Design tokens from the Sarvam system.
+ *
+ * Type: the source calls for Matter (UI) and Season Mix (display). Both are
+ * commercial, so this ships with the closest free equivalents — Plus Jakarta
+ * Sans for UI and Instrument Serif for display. To use the licensed faces,
+ * self-host them and change --font-ui / --font-display below; nothing else
+ * references a family name.
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 24% 11%;
+    /* --- Palette --------------------------------------------------------
+       Structure, type and spacing follow the Sarvam system; the identity
+       colour is Memento's deep violet, taken from the logo, so the mark sits
+       naturally on every surface. The system's rule still holds: the primary
+       colour marks exactly one action per screen. */
+    --brand-purple: 258 57% 24%; /* #2e1a5e — the logo violet */
+    --action-primary: 258 57% 24%;
+    --surface-base: 0 0% 99%; /* #fcfcfc */
+    --surface-secondary: 0 0% 94%; /* #f0f0f0 */
+    --brand-indigo: 258 57% 34%; /* lifted violet for links and focus */
+    --brand-orange: 20 82% 60%; /* #ee7944 */
+    --text-primary: 0 0% 12%; /* #1f1f1f */
+    --text-secondary: 0 0% 24%; /* #3d3d3d */
+    --text-tertiary: 0 0% 40%; /* #666666 */
+    --border-subtle: 0 0% 90%; /* #e6e6e6 */
+
+    /* --- Semantic roles used by the components -------------------------- */
+    --background: var(--surface-base);
+    --foreground: var(--text-primary);
 
     --card: 0 0% 100%;
-    --card-foreground: 222 24% 11%;
+    --card-foreground: var(--text-primary);
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 24% 11%;
+    --popover-foreground: var(--text-primary);
 
-    --primary: 250 76% 58%;
+    /* The single most important action per screen. */
+    --primary: var(--action-primary);
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 12% 96%;
-    --secondary-foreground: 222 24% 15%;
+    --secondary: var(--surface-secondary);
+    --secondary-foreground: var(--text-primary);
 
-    --muted: 240 12% 96%;
-    --muted-foreground: 222 10% 46%;
+    --muted: var(--surface-secondary);
+    --muted-foreground: var(--text-tertiary);
 
-    --accent: 250 90% 96%;
-    --accent-foreground: 250 60% 38%;
+    --accent: 258 60% 96%;
+    --accent-foreground: var(--brand-indigo);
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 10% 90%;
-    --input: 240 10% 88%;
-    --ring: 250 76% 58%;
+    --border: var(--border-subtle);
+    --input: var(--border-subtle);
+    --ring: var(--brand-indigo);
 
-    --radius: 0.85rem;
+    --radius: 12px; /* radius-card */
+
+    --font-ui: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", sans-serif;
+    --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+
+    /* Height of the fixed top app bar, so content can clear it. */
+    --app-bar-height: 56px;
   }
 
   .dark {
-    --background: 224 20% 7%;
-    --foreground: 220 20% 96%;
+    --surface-base: 225 12% 8%;
+    --surface-secondary: 225 10% 15%;
+    --text-primary: 0 0% 96%;
+    --text-secondary: 0 0% 82%;
+    --text-tertiary: 0 0% 64%;
+    --border-subtle: 225 8% 20%;
 
-    --card: 224 18% 10%;
-    --card-foreground: 220 20% 96%;
-
-    --popover: 224 18% 10%;
-    --popover-foreground: 220 20% 96%;
-
-    --primary: 250 84% 68%;
-    --primary-foreground: 224 30% 8%;
-
-    --secondary: 223 15% 16%;
-    --secondary-foreground: 220 20% 96%;
-
-    --muted: 223 15% 16%;
-    --muted-foreground: 220 10% 65%;
-
-    --accent: 250 40% 22%;
-    --accent-foreground: 250 90% 90%;
-
-    --destructive: 0 68% 56%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 223 14% 20%;
-    --input: 223 14% 22%;
-    --ring: 250 84% 68%;
+    --background: var(--surface-base);
+    --foreground: var(--text-primary);
+    --card: 225 12% 11%;
+    --card-foreground: var(--text-primary);
+    --popover: 225 12% 11%;
+    --popover-foreground: var(--text-primary);
+    --primary: 0 0% 96%;
+    --primary-foreground: 225 12% 10%;
+    --secondary: var(--surface-secondary);
+    --secondary-foreground: var(--text-primary);
+    --muted: var(--surface-secondary);
+    --muted-foreground: var(--text-tertiary);
+    --accent: 258 40% 24%;
+    --accent-foreground: 258 80% 88%;
+    --border: var(--border-subtle);
+    --input: var(--border-subtle);
   }
 
   * {
@@ -71,13 +101,15 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    /* Stop the whole page rubber-banding like a web page on iOS. */
+    overscroll-behavior-y: none;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    /* Respect the iPhone home indicator and notch. */
-    padding-bottom: env(safe-area-inset-bottom);
+    font-family: var(--font-ui);
+    font-weight: 425;
+    overscroll-behavior-y: none;
   }
 
   /* Photos are the focus; a tap should never leave a blue flash behind. */
@@ -85,17 +117,62 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Text selection is a desktop affordance; on a phone it fights long-press. */
+  @media (pointer: coarse) {
+    body {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    input,
+    textarea,
+    [contenteditable],
+    .selectable {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+  }
+
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
-  .glass-panel {
-    @apply border border-border/70 bg-card/80 backdrop-blur-xl;
+  /* A violet hero that bleeds into lavender-white, warmed at the edge. */
+  .hero-wash {
+    background-image: radial-gradient(
+        90% 70% at 50% -12%,
+        hsl(var(--brand-purple) / 0.26),
+        transparent 62%
+      ),
+      radial-gradient(60% 55% at 86% 2%, hsl(var(--brand-orange) / 0.18), transparent 68%),
+      linear-gradient(180deg, hsl(258 60% 97%) 0%, hsl(258 40% 98.5%) 54%, hsl(var(--surface-base)) 100%);
   }
 
-  /* Placeholder shimmer while a thumbnail decodes. */
+  /* Depth comes from an inset highlight, not a drop shadow. */
+  .btn-depth {
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.14),
+      inset 0 -1px 0 hsl(0 0% 0% / 0.16),
+      0 1px 2px hsl(0 0% 0% / 0.14);
+  }
+
+  .app-bar {
+    @apply sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl;
+    padding-top: env(safe-area-inset-top);
+  }
+
   .skeleton-shimmer {
     @apply relative overflow-hidden bg-muted;
   }
@@ -103,22 +180,29 @@
   .skeleton-shimmer::after {
     content: "";
     @apply absolute inset-0 -translate-x-full animate-shimmer;
-    background-image: linear-gradient(
-      90deg,
-      transparent,
-      hsl(var(--foreground) / 0.06),
-      transparent
-    );
+    background-image: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.06), transparent);
   }
 
   .code-chip {
-    @apply font-mono text-2xl font-semibold tracking-[0.35em] sm:text-3xl;
+    font-family: var(--font-ui);
+    @apply text-[32px] font-bold tracking-[0.32em];
+  }
+
+  .display-heading {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    line-height: 1.05;
   }
 }
 
 @layer utilities {
   .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -128,5 +212,15 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Momentum scrolling inside panes, without the page itself bouncing. */
+  .scroll-pane {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .press {
+    @apply transition-transform duration-100 active:scale-[0.97];
   }
 }

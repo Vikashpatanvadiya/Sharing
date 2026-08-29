@@ -1,17 +1,28 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import {
+  CheckSquare,
+  Download,
+  ImagePlus,
+  Loader2,
+  Lock,
+  MoreVertical,
+  Settings,
+  Share2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import type { MediaItem } from "@shared/types/index";
 import { AdminPanel } from "@/components/AdminPanel";
-import { AlbumHeader } from "@/components/AlbumHeader";
+import { AppBar } from "@/components/AppBar";
 import { DownloadStatus } from "@/components/DownloadStatus";
 import { EmptyState } from "@/components/EmptyState";
 import { Gallery, GallerySkeleton } from "@/components/Gallery";
 import { Lightbox } from "@/components/Lightbox";
-import { SelectionBar } from "@/components/SelectionBar";
 import { ShareDialog } from "@/components/ShareDialog";
 import { UploadPanel } from "@/components/UploadPanel";
+import { VisibilitySheet } from "@/components/VisibilitySheet";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -23,6 +34,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   albumKeys,
@@ -31,12 +49,13 @@ import {
   useMediaMutations,
   type MediaFilter,
 } from "@/hooks/use-album";
+import { useBackGuard } from "@/hooks/use-back-guard";
 import { useDownloadJob } from "@/hooks/use-download";
 import { toast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { api, ApiRequestError } from "@/lib/api";
+import { formatBytes, pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { pluralize } from "@/lib/format";
 
 const FILTERS: Array<{ value: MediaFilter; label: string }> = [
   { value: "all", label: "All" },
@@ -54,7 +73,7 @@ export default function AlbumPage() {
   const albumQuery = useAlbum(albumId);
   const [filter, setFilter] = useState<MediaFilter>("all");
   const mediaQuery = useAlbumMedia(albumId, filter);
-  const { deleteOne, deleteMany, prependMedia } = useMediaMutations(albumId ?? "");
+  const { deleteOne, deleteMany, prependMedia, replaceMedia } = useMediaMutations(albumId ?? "");
   const download = useDownloadJob(albumId);
 
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -65,6 +84,7 @@ export default function AlbumPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<MediaItem | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [visibilityFor, setVisibilityFor] = useState<MediaItem | null>(null);
   const [nameValue, setNameValue] = useState("");
 
   const upload = useUpload(albumId ?? "", prependMedia);
@@ -79,22 +99,31 @@ export default function AlbumPage() {
     [items, selectedIds],
   );
 
-  // Losing access mid-session (code regenerated, album deleted) sends the
-  // viewer back to the join screen rather than leaving them on a dead page.
+  const exitSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  // Device Back closes whatever is open, in the order a person expects,
+  // instead of dropping them out of the album (or out of the app entirely).
+  useBackGuard(selectionMode, exitSelection);
+  useBackGuard(lightboxIndex !== null, () => setLightboxIndex(null));
+  useBackGuard(uploadOpen, () => setUploadOpen(false));
+  useBackGuard(shareOpen, () => setShareOpen(false));
+  useBackGuard(adminOpen, () => setAdminOpen(false));
+  useBackGuard(Boolean(visibilityFor), () => setVisibilityFor(null));
+
   useEffect(() => {
     const error = albumQuery.error;
     if (!error) return;
     if (error.status === 401 || error.status === 403 || error.status === 404) {
-      toast({
-        variant: "destructive",
-        title: "Album unavailable",
-        description: error.message,
-      });
+      toast({ variant: "destructive", title: "Album unavailable", description: error.message });
       navigate("/join");
     }
   }, [albumQuery.error, navigate]);
 
   const toggleSelect = useCallback((item: MediaItem) => {
+    navigator.vibrate?.(8);
     setSelectedIds((previous) => {
       const next = new Set(previous);
       if (next.has(item.id)) next.delete(item.id);
@@ -103,9 +132,9 @@ export default function AlbumPage() {
     });
   }, []);
 
-  const exitSelection = useCallback(() => {
-    setSelectionMode(false);
-    setSelectedIds(new Set());
+  const startSelection = useCallback((item: MediaItem) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([item.id]));
   }, []);
 
   const confirmDeleteOne = async () => {
@@ -115,7 +144,6 @@ export default function AlbumPage() {
     try {
       await deleteOne.mutateAsync(target.id);
       toast({ title: target.resourceType === "video" ? "Video deleted" : "Photo deleted" });
-      // Keep the viewer on a sensible neighbour rather than dumping them out.
       setLightboxIndex((current) => {
         if (current === null) return null;
         const remaining = items.length - 1;
@@ -126,8 +154,7 @@ export default function AlbumPage() {
       toast({
         variant: "destructive",
         title: "Could not delete",
-        description:
-          error instanceof ApiRequestError ? error.message : "Please try again in a moment.",
+        description: error instanceof ApiRequestError ? error.message : "Please try again.",
       });
     }
   };
@@ -147,15 +174,14 @@ export default function AlbumPage() {
       toast({
         variant: "destructive",
         title: "Could not delete",
-        description:
-          error instanceof ApiRequestError ? error.message : "Please try again in a moment.",
+        description: error instanceof ApiRequestError ? error.message : "Please try again.",
       });
     }
   };
 
   if (albumQuery.isLoading || !albumId) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[100dvh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -163,9 +189,9 @@ export default function AlbumPage() {
 
   if (!albumQuery.data) {
     return (
-      <div className="container flex min-h-[60vh] max-w-md flex-col items-center justify-center text-center">
-        <h1 className="text-2xl font-bold">Album unavailable</h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className="container flex min-h-[100dvh] max-w-md flex-col items-center justify-center text-center">
+        <h1 className="text-section font-display">Album unavailable</h1>
+        <p className="mt-2 text-body text-muted-foreground">
           {albumQuery.error?.message ?? "You don't have access to this album."}
         </p>
         <Button className="mt-6" onClick={() => navigate("/join")}>
@@ -176,40 +202,143 @@ export default function AlbumPage() {
   }
 
   const data = albumQuery.data;
-  const needsName = data.viewer.needsDisplayName;
+  const { album, viewer } = data;
+  const isAdmin = viewer.role === "admin";
+  const deletableCount = selected.filter((item) => item.canDelete).length;
+  const singleRestrictable = selected.length === 1 && selected[0].canRestrict ? selected[0] : null;
 
   return (
-    <div className="min-h-[100dvh] pb-24">
-      <AlbumHeader
-        data={data}
-        onUpload={() => setUploadOpen(true)}
-        onShare={() => setShareOpen(true)}
-        onDownloadAlbum={() => void download.start()}
-        onOpenAdmin={() => setAdminOpen(true)}
-        onToggleSelection={() => {
-          setSelectionMode((value) => !value);
-          setSelectedIds(new Set());
-        }}
-      />
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      {selectionMode ? (
+        <AppBar
+          variant="selection"
+          title={selected.length ? `${selected.length} selected` : "Select items"}
+          subtitle={
+            selected.length > 0 && deletableCount < selected.length
+              ? `You can delete ${deletableCount}`
+              : undefined
+          }
+          onBack={exitSelection}
+          actions={
+            <>
+              {singleRestrictable && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Who can see this"
+                  onClick={() => setVisibilityFor(singleRestrictable)}
+                >
+                  <Lock className="h-5 w-5" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Download selected"
+                disabled={!selected.length || download.isStarting}
+                onClick={() => void download.start(selected.map((item) => item.id))}
+              >
+                {download.isStarting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Delete selected"
+                disabled={deletableCount === 0 || deleteMany.isPending}
+                onClick={() => setBulkDeleteOpen(true)}
+                className="text-destructive"
+              >
+                {deleteMany.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-5 w-5" />
+                )}
+              </Button>
+            </>
+          }
+        />
+      ) : (
+        <AppBar
+          title={album.name}
+          subtitle={
+            <>
+              {pluralize(album.stats.mediaCount, "item")} ·{" "}
+              {pluralize(album.stats.contributorCount, "member")}
+            </>
+          }
+          onBack={() => navigate("/")}
+          actions={
+            <>
+              <Button variant="ghost" size="icon" aria-label="Share album" onClick={() => setShareOpen(true)}>
+                <Share2 className="h-5 w-5" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="More options">
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setSelectionMode(true)}>
+                    <CheckSquare className="h-4 w-4" />
+                    Select
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void download.start()}>
+                    <Download className="h-4 w-4" />
+                    Download album
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => setAdminOpen(true)}>
+                        <Settings className="h-4 w-4" />
+                        Album settings
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => navigate("/")}>
+                    <X className="h-4 w-4" />
+                    Close album
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        />
+      )}
 
-      <main className="container py-5">
-        {items.length > 0 && (
-          <div className="mb-4 flex gap-1.5 overflow-x-auto no-scrollbar">
+      <main className="flex-1 px-2 pb-32 pt-2 sm:px-4">
+        {album.description && !selectionMode && (
+          <p className="px-1 pb-3 text-label text-muted-foreground">{album.description}</p>
+        )}
+
+        {items.length > 0 && !selectionMode && (
+          <div className="mb-2 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
             {FILTERS.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setFilter(option.value)}
                 className={cn(
-                  "shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
+                  "press shrink-0 rounded-pill border px-4 py-2 text-label font-medium transition-colors",
                   filter === option.value
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground hover:bg-accent",
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border bg-card text-text-secondary",
                 )}
               >
                 {option.label}
               </button>
             ))}
+            {album.stats.storageBytes > 0 && (
+              <span className="ml-auto shrink-0 self-center pl-2 pr-1 text-caption text-muted-foreground">
+                {formatBytes(album.stats.storageBytes)}
+              </span>
+            )}
           </div>
         )}
 
@@ -235,20 +364,23 @@ export default function AlbumPage() {
             }}
             onOpen={(item) => setLightboxIndex(items.findIndex((entry) => entry.id === item.id))}
             onToggleSelect={toggleSelect}
+            onLongPress={startSelection}
           />
         )}
       </main>
 
-      {selectionMode && (
-        <SelectionBar
-          selected={selected}
-          isDeleting={deleteMany.isPending}
-          isPreparingDownload={download.isStarting}
-          onDownload={() => void download.start(selected.map((item) => item.id))}
-          onDelete={() => setBulkDeleteOpen(true)}
-          onClear={exitSelection}
-          onSelectAll={() => setSelectedIds(new Set(items.map((item) => item.id)))}
-        />
+      {/* The composer position: the one action this screen exists for. */}
+      {!selectionMode && lightboxIndex === null && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <Button
+            size="lg"
+            onClick={() => setUploadOpen(true)}
+            className="pointer-events-auto w-full max-w-md shadow-lift"
+          >
+            <ImagePlus className="h-5 w-5" />
+            Add photos &amp; videos
+          </Button>
+        </div>
       )}
 
       {lightboxIndex !== null && items[lightboxIndex] && (
@@ -258,6 +390,7 @@ export default function AlbumPage() {
           onIndexChange={setLightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onRequestDelete={setPendingDelete}
+          onRequestVisibility={setVisibilityFor}
           onNeedMore={() => {
             if (mediaQuery.hasNextPage && !mediaQuery.isFetchingNextPage) {
               void mediaQuery.fetchNextPage();
@@ -271,15 +404,26 @@ export default function AlbumPage() {
       <ShareDialog
         open={shareOpen}
         onOpenChange={setShareOpen}
-        albumName={data.album.name}
+        albumName={album.name}
         code={data.joinCode ?? ""}
+        isAdmin={isAdmin}
       />
 
-      {data.viewer.role === "admin" && (
+      <VisibilitySheet
+        albumId={albumId}
+        item={visibilityFor}
+        onOpenChange={(open) => !open && setVisibilityFor(null)}
+        onUpdated={(media) => {
+          replaceMedia(media);
+          setVisibilityFor(null);
+        }}
+      />
+
+      {isAdmin && (
         <AdminPanel
           open={adminOpen}
           onOpenChange={setAdminOpen}
-          album={data.album}
+          album={album}
           onDownloadAlbum={() => {
             setAdminOpen(false);
             void download.start();
@@ -289,7 +433,6 @@ export default function AlbumPage() {
 
       {download.job && <DownloadStatus job={download.job} onDismiss={download.dismiss} />}
 
-      {/* Single-item delete confirmation — never one accidental tap away. */}
       <AlertDialog open={Boolean(pendingDelete)} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -297,7 +440,7 @@ export default function AlbumPage() {
               Delete this {pendingDelete?.resourceType === "video" ? "video" : "photo"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the original{" "}
+              This permanently deletes the original{" "}
               {pendingDelete?.resourceType === "video" ? "video" : "photo"} from the album. It cannot
               be undone.
             </AlertDialogDescription>
@@ -320,9 +463,7 @@ export default function AlbumPage() {
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {pluralize(selected.filter((item) => item.canDelete).length, "item")}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Delete {pluralize(deletableCount, "item")}?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently deletes the original files from the album. It cannot be undone.
               {selected.some((item) => !item.canDelete) &&
@@ -344,8 +485,7 @@ export default function AlbumPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Asked once, after joining, so uploads have a name attached. */}
-      <AlertDialog open={needsName}>
+      <AlertDialog open={viewer.needsDisplayName}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>What's your name?</AlertDialogTitle>
@@ -363,8 +503,6 @@ export default function AlbumPage() {
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={async () => {
-                // "Skip" still needs a stored name, otherwise we'd ask again on
-                // every load. Guest is an honest default.
                 await api.setDisplayName(albumId, "Guest").catch(() => {});
                 void queryClient.invalidateQueries({ queryKey: albumKeys.album(albumId) });
               }}

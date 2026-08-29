@@ -17,9 +17,11 @@ interface ShareDialogProps {
   onOpenChange: (open: boolean) => void;
   albumName: string;
   code: string;
+  /** Only the album creator is given the code, so only they can pass it on. */
+  isAdmin?: boolean;
 }
 
-export function ShareDialog({ open, onOpenChange, albumName, code }: ShareDialogProps) {
+export function ShareDialog({ open, onOpenChange, albumName, code, isAdmin = true }: ShareDialogProps) {
   const { copied, copy } = useCopy();
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
@@ -45,6 +47,17 @@ export function ShareDialog({ open, onOpenChange, albumName, code }: ShareDialog
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
+        {!isAdmin || !code ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Share this album</DialogTitle>
+              <DialogDescription>
+                Ask the album creator for the code — only they can share it.
+              </DialogDescription>
+            </DialogHeader>
+          </>
+        ) : (
+        <>
         <DialogHeader>
           <DialogTitle>Share this album</DialogTitle>
           <DialogDescription>
@@ -52,11 +65,9 @@ export function ShareDialog({ open, onOpenChange, albumName, code }: ShareDialog
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-2xl border border-dashed border-primary/40 bg-accent/40 px-6 py-7 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Album code
-          </p>
-          <p className="code-chip mt-2">{code}</p>
+        <div className="rounded-panel border border-dashed border-brand-indigo/40 bg-accent px-6 py-7 text-center">
+          <p className="text-eyebrow font-medium uppercase text-text-tertiary">Album code</p>
+          <p className="code-chip selectable mt-2">{code}</p>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
@@ -92,21 +103,24 @@ export function ShareDialog({ open, onOpenChange, albumName, code }: ShareDialog
         </Button>
 
         {showQr && (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-5">
+          <div className="flex flex-col items-center gap-2 rounded-panel border border-border bg-card p-5">
             {qrDataUrl ? (
-              <img src={qrDataUrl} alt={`QR code to join ${albumName}`} className="h-48 w-48 rounded-lg" />
+              <img src={qrDataUrl} alt={`QR code to join ${albumName}`} className="h-48 w-48 rounded-card" />
             ) : (
-              <div className="h-48 w-48 skeleton-shimmer rounded-lg" />
+              <div className="h-48 w-48 skeleton-shimmer rounded-card" />
             )}
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-caption text-text-tertiary">
               Scan to open the join page with the code filled in.
             </p>
           </div>
         )}
 
-        <p className="text-center text-xs text-muted-foreground">
-          Or send them to <span className="font-medium text-foreground">{joinUrlFor(code)}</span>
+        <p className="text-center text-caption text-muted-foreground">
+          Or send them to{" "}
+          <span className="selectable font-medium text-foreground">{joinUrlFor(code)}</span>
         </p>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

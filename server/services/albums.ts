@@ -1,6 +1,11 @@
 import { and, count, desc, eq, exists, or, sql } from "drizzle-orm";
 import type { Request, Response } from "express";
-import type { AlbumStats, AlbumSummary, ContributorSummary } from "../../shared/types/index.js";
+import type {
+  AlbumMember,
+  AlbumStats,
+  AlbumSummary,
+  ContributorSummary,
+} from "../../shared/types/index.js";
 import { db } from "../db/index.js";
 import { albums, contributors, media, orphanedAssets, type Album } from "../db/schema.js";
 import { env } from "../env.js";
@@ -15,9 +20,10 @@ import {
 } from "../lib/crypto.js";
 import { AppError, notFound } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
-import { createContributorSession } from "../middleware/auth.js";
+import { createContributorSession, type AlbumAccess } from "../middleware/auth.js";
 import { getMemberSecret, setAdminToken, setMemberSecret } from "../middleware/session.js";
 import { deleteAlbumFolder, destroyManyResources } from "./cloudinary.js";
+import { visibilityFilter } from "./media.js";
 
 export interface CreateAlbumInput {
   name: string;
@@ -141,7 +147,17 @@ export async function setDisplayName(contributorId: string, displayName: string)
   return updated;
 }
 
-export async function getAlbumStats(albumId: string): Promise<AlbumStats> {
+/**
+ * Album statistics. When a viewer is supplied the counts describe what *they*
+ * can see, so a restricted photo does not show up as a phantom in someone
+ * else's header while being absent from their grid.
+ */
+export async function getAlbumStats(
+  albumId: string,
+  access?: AlbumAccess,
+): Promise<AlbumStats> {
+  const visibility = access ? visibilityFilter(access) : undefined;
+
   const [mediaRow] = await db
     .select({
       mediaCount: sql<number>`count(*)::int`,
@@ -150,7 +166,7 @@ export async function getAlbumStats(albumId: string): Promise<AlbumStats> {
       storageBytes: sql<number>`coalesce(sum(${media.fileSize}), 0)::bigint`,
     })
     .from(media)
-    .where(eq(media.albumId, albumId));
+    .where(visibility ? and(eq(media.albumId, albumId), visibility) : eq(media.albumId, albumId));
 
   // Only people who actually showed up count as contributors; a session row
   // created by a stray visit with no name and no upload would be noise.
@@ -184,15 +200,47 @@ export async function getAlbumStats(albumId: string): Promise<AlbumStats> {
   };
 }
 
-export async function toAlbumSummary(album: Album): Promise<AlbumSummary> {
+export async function toAlbumSummary(
+  album: Album,
+  access?: AlbumAccess,
+): Promise<AlbumSummary> {
   return {
     id: album.id,
     name: album.name,
     description: album.description,
     eventDate: album.eventDate,
     createdAt: new Date(album.createdAt).toISOString(),
-    stats: await getAlbumStats(album.id),
+    stats: await getAlbumStats(album.id, access),
   };
+}
+
+/** The album's members, for the "who can see this" picker. */
+export async function listAlbumMembers(access: AlbumAccess): Promise<AlbumMember[]> {
+  const rows = await db
+    .select({
+      id: contributors.id,
+      displayName: contributors.displayName,
+      isAdmin: contributors.isAdmin,
+      nameConfirmed: contributors.nameConfirmed,
+      mediaCount: sql<number>`count(${media.id})::int`,
+    })
+    .from(contributors)
+    .leftJoin(media, eq(media.contributorId, contributors.id))
+    .where(eq(contributors.albumId, access.album.id))
+    .groupBy(contributors.id, contributors.displayName, contributors.isAdmin, contributors.nameConfirmed)
+    .orderBy(desc(contributors.lastSeenAt))
+    .limit(200);
+
+  // Drive-by visitors who never named themselves or uploaded anything are not
+  // people you would meaningfully share a photo with.
+  return rows
+    .filter((row) => row.nameConfirmed === 1 || row.mediaCount > 0)
+    .map((row) => ({
+      id: row.id,
+      displayName: row.displayName,
+      isYou: row.id === access.contributor.id,
+      isAdmin: row.isAdmin === 1,
+    }));
 }
 
 /** The plaintext join code, decrypted. Only ever returned to a verified admin. */

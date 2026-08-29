@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, lt, or, sql } from "drizzle-orm";
 import type { MediaItem, MediaPage, ResourceType } from "../../shared/types/index.js";
 import { db } from "../db/index.js";
-import { media, orphanedAssets, type Media } from "../db/schema.js";
+import { contributors, media, mediaVisibility, orphanedAssets, type Media } from "../db/schema.js";
 import { env } from "../env.js";
 import { conflict, forbidden, notFound, payloadTooLarge, upstreamFailure } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
@@ -20,6 +20,42 @@ const PAGE_SIZE = 60;
 const MAX_PAGE_SIZE = 120;
 
 /**
+ * The one place the visibility rule is expressed as SQL.
+ *
+ * A media row is visible when it is unrestricted, or when the viewer uploaded
+ * it, or when the viewer is explicitly on its allow-list. Album admins bypass
+ * the rule entirely — they can always see everything in their own album.
+ *
+ * Every query that reads media must be filtered through this, including the
+ * ones behind downloads and ZIPs; a restricted photo has to be invisible to
+ * counts, cursors, archives and duplicate checks alike, not just to the grid.
+ */
+export function visibilityFilter(access: AlbumAccess) {
+  if (access.role === "admin") return undefined;
+  return or(
+    eq(media.visibility, "album"),
+    eq(media.contributorId, access.contributor.id),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(mediaVisibility)
+        .where(
+          and(
+            eq(mediaVisibility.mediaId, media.id),
+            eq(mediaVisibility.contributorId, access.contributor.id),
+          ),
+        ),
+    ),
+  );
+}
+
+/** Narrows a list of conditions with the viewer's visibility rule. */
+function withVisibility(access: AlbumAccess, conditions: Array<ReturnType<typeof eq> | undefined>) {
+  const filter = visibilityFilter(access);
+  return and(...conditions.filter(Boolean), ...(filter ? [filter] : []));
+}
+
+/**
  * A viewer may delete a media item when they uploaded it, or when they are the
  * album admin. This is the only place that rule is expressed, and it always
  * runs against the session-derived identity — never a client-supplied id.
@@ -29,7 +65,19 @@ export function canDelete(access: AlbumAccess, item: { contributorId: string | n
   return item.contributorId !== null && item.contributorId === access.contributor.id;
 }
 
-export function toMediaItem(row: Media, access: AlbumAccess): MediaItem {
+/**
+ * Who may change a photo's audience: the person who uploaded it, or the album
+ * admin. Deliberately the same rule as deletion.
+ */
+export function canRestrict(access: AlbumAccess, item: { contributorId: string | null }): boolean {
+  return canDelete(access, item);
+}
+
+export function toMediaItem(
+  row: Media,
+  access: AlbumAccess,
+  visibleTo: string[] = [],
+): MediaItem {
   const resourceType = row.cloudinaryResourceType as ResourceType;
   return {
     id: row.id,
@@ -37,6 +85,9 @@ export function toMediaItem(row: Media, access: AlbumAccess): MediaItem {
     contributorId: row.contributorId,
     uploaderName: row.uploaderName,
     canDelete: canDelete(access, row),
+    canRestrict: canRestrict(access, row),
+    visibility: row.visibility === "restricted" ? "restricted" : "album",
+    visibleTo,
 
     resourceType,
     originalFilename: row.originalFilename,
@@ -103,6 +154,9 @@ export async function listMedia(
     filters.push(eq(media.contributorId, access.contributor.id));
   }
 
+  const visibility = visibilityFilter(access);
+  if (visibility) filters.push(visibility);
+
   const pageFilters = [...filters];
   if (cursor) {
     pageFilters.push(
@@ -135,8 +189,26 @@ export async function listMedia(
   };
 }
 
+/** Raw lookup with no visibility filter. Callers must apply one themselves. */
 export async function getMediaById(mediaId: string): Promise<Media | null> {
   const [row] = await db.select().from(media).where(eq(media.id, mediaId)).limit(1);
+  return row ?? null;
+}
+
+/**
+ * Fetches one item *as this viewer sees it*. A restricted photo the viewer is
+ * not on the allow-list for comes back as null, so it is indistinguishable
+ * from one that does not exist.
+ */
+export async function getVisibleMedia(
+  access: AlbumAccess,
+  mediaId: string,
+): Promise<Media | null> {
+  const [row] = await db
+    .select()
+    .from(media)
+    .where(withVisibility(access, [eq(media.id, mediaId), eq(media.albumId, access.album.id)]))
+    .limit(1);
   return row ?? null;
 }
 
@@ -147,6 +219,71 @@ export async function getMediaForAlbum(albumId: string, mediaId: string): Promis
     .where(and(eq(media.id, mediaId), eq(media.albumId, albumId)))
     .limit(1);
   return row ?? null;
+}
+
+/** The contributors a restricted item is shared with. */
+export async function listVisibleTo(mediaId: string): Promise<string[]> {
+  const rows = await db
+    .select({ contributorId: mediaVisibility.contributorId })
+    .from(mediaVisibility)
+    .where(eq(mediaVisibility.mediaId, mediaId));
+  return rows.map((row) => row.contributorId);
+}
+
+/**
+ * Sets a photo's audience. Passing an empty list (or `restricted: false`)
+ * returns it to the whole album. Only ids that are really contributors of this
+ * album are stored, so a crafted request cannot leak a row to an outsider.
+ */
+export async function setMediaVisibility(
+  access: AlbumAccess,
+  mediaId: string,
+  input: { restricted: boolean; contributorIds: string[] },
+): Promise<Media> {
+  const row = await getVisibleMedia(access, mediaId);
+  if (!row) throw notFound("That photo or video is no longer in this album.");
+  if (!canRestrict(access, row)) {
+    throw forbidden("Only the person who uploaded this, or the album creator, can change who sees it.");
+  }
+
+  const requested = Array.from(new Set(input.contributorIds));
+  const valid = requested.length
+    ? await db
+        .select({ id: contributors.id })
+        .from(contributors)
+        .where(
+          and(eq(contributors.albumId, access.album.id), inArray(contributors.id, requested)),
+        )
+    : [];
+
+  // The uploader always keeps access, so storing them would be redundant.
+  const allowed = valid
+    .map((c) => c.id)
+    .filter((id) => id !== row.contributorId);
+
+  const restricted = input.restricted && allowed.length > 0;
+
+  await db.delete(mediaVisibility).where(eq(mediaVisibility.mediaId, row.id));
+  if (restricted) {
+    await db
+      .insert(mediaVisibility)
+      .values(allowed.map((contributorId) => ({ mediaId: row.id, contributorId })));
+  }
+
+  const [updated] = await db
+    .update(media)
+    .set({ visibility: restricted ? "restricted" : "album", updatedAt: new Date() })
+    .where(eq(media.id, row.id))
+    .returning();
+
+  logger.info("media visibility changed", {
+    mediaId: row.id,
+    albumId: access.album.id,
+    restricted,
+    audience: allowed.length,
+  });
+
+  return updated;
 }
 
 export interface RegisterMediaInput {
@@ -207,10 +344,17 @@ export async function registerMedia(
   }
 
   if (!input.allowDuplicate && resource.etag) {
+    // Scoped to what this uploader can see: otherwise "this already exists"
+    // would reveal a photo that is deliberately hidden from them.
     const [duplicate] = await db
       .select()
       .from(media)
-      .where(and(eq(media.albumId, access.album.id), eq(media.checksum, resource.etag)))
+      .where(
+        withVisibility(access, [
+          eq(media.albumId, access.album.id),
+          eq(media.checksum, resource.etag),
+        ]),
+      )
       .limit(1);
     if (duplicate) {
       // The freshly uploaded copy stays put until the user decides; it is never
@@ -291,7 +435,7 @@ export interface DeleteOutcome {
  * exists and still costs storage.
  */
 export async function deleteMediaItem(access: AlbumAccess, mediaId: string): Promise<void> {
-  const row = await getMediaForAlbum(access.album.id, mediaId);
+  const row = await getVisibleMedia(access, mediaId);
   if (!row) throw notFound("That photo or video is no longer in this album.");
   if (!canDelete(access, row)) {
     throw forbidden("You can only delete photos and videos that you uploaded.");
@@ -327,7 +471,7 @@ export async function deleteMediaBulk(
   const rows = await db
     .select()
     .from(media)
-    .where(and(eq(media.albumId, access.album.id), inArray(media.id, mediaIds)));
+    .where(withVisibility(access, [eq(media.albumId, access.album.id), inArray(media.id, mediaIds)]));
 
   const outcome: DeleteOutcome = { deleted: [], failed: [] };
   const found = new Set(rows.map((r) => r.id));
@@ -366,20 +510,21 @@ export async function deleteMediaBulk(
 }
 
 /** Media rows for a set of ids, in a stable order, scoped to one album. */
-export async function getMediaByIds(albumId: string, ids: string[]): Promise<Media[]> {
+export async function getMediaByIds(access: AlbumAccess, ids: string[]): Promise<Media[]> {
   if (!ids.length) return [];
   return db
     .select()
     .from(media)
-    .where(and(eq(media.albumId, albumId), inArray(media.id, ids)))
+    .where(withVisibility(access, [eq(media.albumId, access.album.id), inArray(media.id, ids)]))
     .orderBy(asc(media.createdAt), asc(media.id));
 }
 
-export async function listAllMediaForAlbum(albumId: string): Promise<Media[]> {
+/** Everything in the album that this viewer is allowed to receive. */
+export async function listAllMediaForAlbum(access: AlbumAccess): Promise<Media[]> {
   return db
     .select()
     .from(media)
-    .where(eq(media.albumId, albumId))
+    .where(withVisibility(access, [eq(media.albumId, access.album.id)]))
     .orderBy(asc(media.createdAt), asc(media.id));
 }
 
@@ -387,7 +532,7 @@ export async function recentUploads(access: AlbumAccess, limit = 12): Promise<Me
   const rows = await db
     .select()
     .from(media)
-    .where(eq(media.albumId, access.album.id))
+    .where(withVisibility(access, [eq(media.albumId, access.album.id)]))
     .orderBy(desc(media.createdAt))
     .limit(limit);
   return rows.map((row) => toMediaItem(row, access));

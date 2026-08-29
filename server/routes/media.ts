@@ -8,9 +8,13 @@ import { getVisitorId } from "../middleware/session.js";
 import { streamOriginal } from "../services/cloudinary.js";
 import {
   canDelete,
+  canRestrict,
   deleteMediaBulk,
   deleteMediaItem,
   getMediaById,
+  getVisibleMedia,
+  listVisibleTo,
+  setMediaVisibility,
   toMediaItem,
 } from "../services/media.js";
 import type { Media } from "../db/schema.js";
@@ -37,7 +41,14 @@ async function loadMediaWithAccess(
   getVisitorId(req, res);
   const access = await resolveAlbumAccess(req, res, row.albumId);
   if (!access) throw unauthorized("You don't have access to this album.");
-  return { row, access };
+
+  // Re-fetch through the visibility rule. A restricted item the viewer is not
+  // on the allow-list for is reported as missing rather than forbidden, so its
+  // existence is not disclosed.
+  const visible = await getVisibleMedia(access, row.id);
+  if (!visible) throw notFound("That photo or video is no longer in this album.");
+
+  return { row: visible, access };
 }
 
 /** Content-Disposition that survives spaces, quotes and non-ASCII filenames. */
@@ -102,7 +113,30 @@ mediaRouter.get("/:mediaId/download", downloadLimiter, async (req, res, next) =>
 mediaRouter.get("/:mediaId", async (req, res, next) => {
   try {
     const { row, access } = await loadMediaWithAccess(req, res, req.params.mediaId);
-    res.json({ media: toMediaItem(row, access) });
+    const visibleTo = canRestrict(access, row) ? await listVisibleTo(row.id) : [];
+    res.json({ media: toMediaItem(row, access, visibleTo) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Sets who can see a photo. `restricted: false` (or an empty audience) puts it
+ * back in front of the whole album.
+ */
+mediaRouter.patch("/:mediaId/visibility", deleteLimiter, async (req, res, next) => {
+  try {
+    const { row, access } = await loadMediaWithAccess(req, res, req.params.mediaId);
+    const input = z
+      .object({
+        restricted: z.boolean(),
+        contributorIds: z.array(idSchema).max(200).default([]),
+      })
+      .parse(req.body);
+
+    const updated = await setMediaVisibility(access, row.id, input);
+    const visibleTo = await listVisibleTo(updated.id);
+    res.json({ media: toMediaItem(updated, access, visibleTo) });
   } catch (error) {
     next(error);
   }
@@ -138,6 +172,8 @@ mediaRouter.post("/bulk-delete", deleteLimiter, async (req, res, next) => {
     getVisitorId(req, res);
     const access = await resolveAlbumAccess(req, res, first.albumId);
     if (!access) throw unauthorized("You don't have access to this album.");
+    // deleteMediaBulk re-resolves each id through the visibility rule, so a
+    // hidden item in the list is simply reported as not found.
 
     const outcome = await deleteMediaBulk(access, mediaIds);
     res.json({

@@ -114,7 +114,24 @@ export function useMediaMutations(albumId: string) {
     );
   };
 
-  return { deleteOne, deleteMany, prependMedia, invalidate };
+  /** Swaps one item in place — used after its audience changes. */
+  const replaceMedia = (media: MediaItem) => {
+    queryClient.setQueriesData<{ pages: MediaPage[]; pageParams: unknown[] }>(
+      { queryKey: ["album", albumId, "media"] },
+      (data) => {
+        if (!data) return data;
+        return {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((item) => (item.id === media.id ? media : item)),
+          })),
+        };
+      },
+    );
+  };
+
+  return { deleteOne, deleteMany, prependMedia, replaceMedia, invalidate };
 }
 
 export function useAppConfig() {

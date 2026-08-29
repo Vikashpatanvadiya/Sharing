@@ -51,6 +51,17 @@ export interface MediaItem {
   uploaderName: string;
   /** True when the signed-in viewer may delete this item. */
   canDelete: boolean;
+  /** True when the viewer may change who can see this item. */
+  canRestrict: boolean;
+
+  /**
+   * "album" means everyone in the album sees it. "restricted" means only the
+   * uploader, the admin and the people in `visibleTo` can — enforced by the
+   * server on every read, not just hidden in the UI.
+   */
+  visibility: "album" | "restricted";
+  /** Contributor ids this item is shared with; only sent to those who may edit it. */
+  visibleTo: string[];
 
   resourceType: ResourceType;
   originalFilename: string;
@@ -130,6 +141,14 @@ export interface RegisterMediaRequest {
   originalFilename: string;
   mimeType?: string;
   checksum?: string;
+}
+
+/** A member of the album, for the "who can see this" picker. */
+export interface AlbumMember {
+  id: string;
+  displayName: string;
+  isYou: boolean;
+  isAdmin: boolean;
 }
 
 export interface ContributorSummary {

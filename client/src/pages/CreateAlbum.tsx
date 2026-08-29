@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Check, Copy, PartyPopper, Share2 } from "lucide-react";
+import { Check, Copy, PartyPopper, Share2 } from "lucide-react";
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
-import { Logo } from "@/components/Logo";
+import { useLocation } from "wouter";
+import { AppBar } from "@/components/AppBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,20 +46,18 @@ export default function CreateAlbumPage() {
 
   if (created) {
     return (
-      <div className="container flex min-h-[100dvh] max-w-lg flex-col justify-center py-12">
-        <div className="animate-fade-in rounded-3xl border border-border bg-card p-8 text-center shadow-lift">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+      <div className="container flex min-h-[100dvh] max-w-lg flex-col justify-center py-10">
+        <div className="animate-fade-in rounded-panel border border-border bg-card p-7 text-center">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-panel bg-accent text-accent-foreground">
             <PartyPopper className="h-7 w-7" />
           </span>
 
-          <h1 className="mt-5 text-2xl font-bold tracking-tight">Album created</h1>
-          <p className="mt-1.5 text-muted-foreground">{created.name}</p>
+          <h1 className="mt-5 font-display text-section">Album created</h1>
+          <p className="mt-1.5 text-body text-text-tertiary">{created.name}</p>
 
-          <div className="mt-7 rounded-2xl border border-dashed border-primary/40 bg-accent/40 px-6 py-7">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Album code
-            </p>
-            <p className="code-chip mt-2 text-foreground">{created.code}</p>
+          <div className="mt-6 rounded-panel border border-dashed border-brand-indigo/40 bg-accent px-6 py-7">
+            <p className="text-eyebrow font-medium uppercase text-text-tertiary">Album code</p>
+            <p className="code-chip selectable mt-2 text-text-primary">{created.code}</p>
           </div>
 
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
@@ -82,7 +80,7 @@ export default function CreateAlbumPage() {
             </Button>
           </div>
 
-          <p className="mt-6 text-sm text-muted-foreground">
+          <p className="mt-6 text-label text-text-tertiary">
             Share this code with your friends. Anyone with it can view and add photos.
           </p>
 
@@ -90,7 +88,7 @@ export default function CreateAlbumPage() {
             Open album
           </Button>
 
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-4 text-caption text-text-tertiary">
             You're the album creator on this device. Keep using this browser to manage the album.
           </p>
         </div>
@@ -99,93 +97,87 @@ export default function CreateAlbumPage() {
   }
 
   return (
-    <div className="container max-w-lg py-8 sm:py-12">
-      <div className="mb-8 flex items-center justify-between">
-        <Logo />
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-        </Button>
-      </div>
+    <div className="min-h-[100dvh]">
+      <AppBar title="New album" onBack={() => navigate("/")} />
 
-      <h1 className="text-3xl font-bold tracking-tight">Create your album</h1>
-      <p className="mt-2 text-muted-foreground">
-        You'll get a private code to share with everyone you want in it.
-      </p>
+      <div className="container max-w-lg pb-12 pt-6">
+        <h1 className="font-display text-section">Create your album</h1>
+        <p className="mt-2 text-body text-text-tertiary">
+          You'll get a private code to share with everyone you want in it.
+        </p>
 
-      <form
-        className="mt-8 space-y-5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!name.trim()) return;
-          createMutation.mutate();
-        }}
-      >
-        <div className="space-y-2">
-          <Label htmlFor="album-name">Album name</Label>
-          <Input
-            id="album-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Goa Trip 2026"
-            maxLength={120}
-            required
-            autoFocus
-            autoComplete="off"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="album-description">
-            Description <span className="font-normal text-muted-foreground">(optional)</span>
-          </Label>
-          <Textarea
-            id="album-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Our Goa trip memories"
-            maxLength={500}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="album-date">
-            Event date <span className="font-normal text-muted-foreground">(optional)</span>
-          </Label>
-          <Input
-            id="album-date"
-            type="date"
-            value={eventDate}
-            onChange={(event) => setEventDate(event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="creator-name">
-            Your name <span className="font-normal text-muted-foreground">(optional)</span>
-          </Label>
-          <Input
-            id="creator-name"
-            value={creatorName}
-            onChange={(event) => setCreatorName(event.target.value)}
-            placeholder="Vikash"
-            maxLength={60}
-            autoComplete="name"
-          />
-          <p className="text-xs text-muted-foreground">Shown next to the photos you upload.</p>
-        </div>
-
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={createMutation.isPending || !name.trim()}
+        <form
+          className="mt-7 space-y-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!name.trim()) return;
+            createMutation.mutate();
+          }}
         >
-          {createMutation.isPending ? "Creating..." : "Create Album"}
-        </Button>
-      </form>
+          <div className="space-y-2">
+            <Label htmlFor="album-name">Album name</Label>
+            <Input
+              id="album-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Goa Trip 2026"
+              maxLength={120}
+              required
+              autoFocus
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="album-description">
+              Description <span className="font-regular text-text-tertiary">(optional)</span>
+            </Label>
+            <Textarea
+              id="album-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Our Goa trip memories"
+              maxLength={500}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="album-date">
+              Event date <span className="font-regular text-text-tertiary">(optional)</span>
+            </Label>
+            <Input
+              id="album-date"
+              type="date"
+              value={eventDate}
+              onChange={(event) => setEventDate(event.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="creator-name">
+              Your name <span className="font-regular text-text-tertiary">(optional)</span>
+            </Label>
+            <Input
+              id="creator-name"
+              value={creatorName}
+              onChange={(event) => setCreatorName(event.target.value)}
+              placeholder="Vikash"
+              maxLength={60}
+              autoComplete="name"
+            />
+            <p className="text-caption text-text-tertiary">Shown next to the photos you upload.</p>
+          </div>
+
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={createMutation.isPending || !name.trim()}
+            >
+              {createMutation.isPending ? "Creating..." : "Create Album"}
+            </Button>
+          </form>
+      </div>
     </div>
   );
 }

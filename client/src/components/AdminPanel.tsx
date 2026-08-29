@@ -130,12 +130,10 @@ export function AdminPanel({ open, onOpenChange, album, onDownloadAlbum }: Admin
               <Stat icon={HardDrive} label="Storage" value={formatBytes(stats.storageBytes)} />
             </div>
 
-            <div className="rounded-2xl border border-border bg-muted/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Album code
-              </p>
+            <div className="rounded-panel border border-border bg-secondary/60 p-4">
+              <p className="text-eyebrow font-medium uppercase text-text-tertiary">Album code</p>
               <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="font-mono text-xl font-semibold tracking-[0.3em]">
+                <p className="selectable text-subheading font-bold tracking-[0.28em]">
                   {dashboard?.joinCode ?? "······"}
                 </p>
                 <div className="flex gap-1">
@@ -165,24 +163,24 @@ export function AdminPanel({ open, onOpenChange, album, onDownloadAlbum }: Admin
             </div>
 
             {isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-label text-text-tertiary">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading album details…
               </div>
             ) : (
               dashboard && dashboard.contributors.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-2 text-eyebrow font-medium uppercase text-text-tertiary">
                     Contributors
                   </p>
-                  <ul className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                  <ul className="max-h-44 space-y-1 overflow-y-auto scroll-pane pr-1">
                     {dashboard.contributors.map((contributor) => (
                       <li
                         key={contributor.id}
-                        className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm"
+                        className="flex min-h-11 items-center justify-between gap-3 rounded-card px-2 py-1.5 text-label"
                       >
                         <span className="truncate font-medium">{contributor.displayName}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
+                        <span className="shrink-0 text-caption text-text-tertiary">
                           {pluralize(contributor.mediaCount, "upload")} ·{" "}
                           {formatRelative(contributor.lastSeenAt)}
                         </span>
@@ -194,9 +192,7 @@ export function AdminPanel({ open, onOpenChange, album, onDownloadAlbum }: Admin
             )}
 
             <div className="grid gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Album management
-              </p>
+              <p className="text-eyebrow font-medium uppercase text-text-tertiary">Album management</p>
               <Button variant="outline" onClick={() => setView("edit")}>
                 Edit album details
               </Button>
@@ -277,7 +273,7 @@ export function AdminPanel({ open, onOpenChange, album, onDownloadAlbum }: Admin
               </DialogDescription>
             </DialogHeader>
 
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-card border border-border p-4">
               <Checkbox
                 checked={revokeSessions}
                 onCheckedChange={(checked) => setRevokeSessions(checked === true)}
@@ -285,7 +281,7 @@ export function AdminPanel({ open, onOpenChange, album, onDownloadAlbum }: Admin
               />
               <span className="text-sm">
                 <span className="font-medium">Also sign out everyone who already joined</span>
-                <span className="mt-1 block text-muted-foreground">
+                <span className="mt-1 block text-caption text-text-tertiary">
                   They'll need the new code to get back in. Their uploads stay in the album. Leave
                   this off to keep existing members signed in.
                 </span>
@@ -311,14 +307,14 @@ export function AdminPanel({ open, onOpenChange, album, onDownloadAlbum }: Admin
               <DialogDescription>This action cannot be undone.</DialogDescription>
             </DialogHeader>
 
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+            <div className="rounded-card border border-destructive/30 bg-destructive/5 p-4 text-label">
               <p className="font-medium text-destructive">This will permanently delete:</p>
-              <ul className="mt-2 space-y-0.5 text-muted-foreground">
+              <ul className="mt-2 space-y-0.5 text-text-tertiary">
                 <li>{pluralize(stats.photoCount, "photo")}</li>
                 <li>{pluralize(stats.videoCount, "video")}</li>
                 <li>{pluralize(stats.contributorCount, "contributor")}</li>
               </ul>
-              <p className="mt-3 text-muted-foreground">
+              <p className="mt-3 text-text-tertiary">
                 The media will also be deleted from storage.
               </p>
             </div>
@@ -365,12 +361,12 @@ function Stat({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <div className="rounded-card border border-border bg-card p-3">
+      <div className="flex items-center gap-1.5 text-caption text-text-tertiary">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
-      <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
+      <p className="mt-1 text-subheading font-semibold tabular-nums">{value}</p>
     </div>
   );
 }

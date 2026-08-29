@@ -19,7 +19,7 @@ export function DownloadStatus({ job, onDismiss }: DownloadStatusProps) {
   if (job.status === "failed" || job.status === "expired") return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-border bg-card p-4 shadow-lift">
+    <div className="fixed bottom-[max(84px,calc(env(safe-area-inset-bottom)+84px))] left-1/2 z-40 w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 animate-fade-in rounded-panel border border-border bg-card p-4 shadow-lift">
       <div className="flex items-start gap-3">
         {isWorking ? (
           <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" />
@@ -28,10 +28,10 @@ export function DownloadStatus({ job, onDismiss }: DownloadStatusProps) {
         )}
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
+          <p className="text-label font-semibold">
             {isWorking ? "Preparing your download…" : "Your download is ready"}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 text-caption text-text-tertiary">
             {isWorking
               ? `${job.processedCount} of ${job.fileCount} files · You can keep using the album`
               : `${job.fileCount} original files · ${job.filename}`}
@@ -49,7 +49,7 @@ export function DownloadStatus({ job, onDismiss }: DownloadStatusProps) {
           )}
 
           {job.error && job.status === "ready" && (
-            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">{job.error}</p>
+            <p className="mt-2 text-caption text-brand-orange">{job.error}</p>
           )}
         </div>
 

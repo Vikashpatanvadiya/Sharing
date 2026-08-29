@@ -15,7 +15,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -23,6 +23,11 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/**
+ * A bottom sheet on phones and a centred panel from `sm` up. The grab handle
+ * and the rounded top edge are what make it read as a native sheet rather than
+ * a web modal.
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideClose?: boolean }
@@ -32,17 +37,22 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        // Bottom sheet on phones, centred card from sm upwards.
-        "fixed z-50 flex w-full flex-col gap-4 border border-border bg-card p-6 shadow-lift duration-200",
-        "bottom-0 left-0 max-h-[92vh] overflow-y-auto rounded-t-3xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        "sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
+        "fixed z-50 flex w-full flex-col gap-4 border-border bg-card",
+        "bottom-0 left-0 max-h-[92dvh] overflow-y-auto scroll-pane rounded-t-4xl border-t px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-3 shadow-sheet",
+        "data-[state=open]:animate-slide-up data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom",
+        "sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-panel sm:border sm:p-6 sm:shadow-lift sm:data-[state=open]:animate-dialog-in sm:data-[state=closed]:animate-dialog-out",
         className,
       )}
       {...props}
     >
+      {/* Grab handle — decorative, the sheet is dismissed by tap or Back. */}
+      <div
+        aria-hidden
+        className="mx-auto mb-1 h-1 w-10 shrink-0 rounded-pill bg-border sm:hidden"
+      />
       {children}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 opacity-60 transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none">
+        <DialogPrimitive.Close className="absolute right-4 top-4 hidden rounded-pill p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none sm:block">
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -53,12 +63,12 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-1.5 pr-8 text-left", className)} {...props} />
+  <div className={cn("flex flex-col gap-1.5 pr-8 text-left", className)} {...props} />
 );
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)}
+    className={cn("flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end", className)}
     {...props}
   />
 );
@@ -69,7 +79,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-xl font-semibold tracking-tight", className)}
+    className={cn("text-subheading font-semibold tracking-[-0.3px]", className)}
     {...props}
   />
 ));
@@ -81,7 +91,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-label text-muted-foreground", className)}
     {...props}
   />
 ));

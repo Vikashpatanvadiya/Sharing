@@ -12,6 +12,7 @@ interface GalleryProps {
   onLoadMore: () => void;
   onOpen: (item: MediaItem) => void;
   onToggleSelect: (item: MediaItem) => void;
+  onLongPress: (item: MediaItem) => void;
 }
 
 /**
@@ -29,6 +30,7 @@ export function Gallery({
   onLoadMore,
   onOpen,
   onToggleSelect,
+  onLongPress,
 }: GalleryProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef(onLoadMore);
@@ -50,7 +52,7 @@ export function Gallery({
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2 lg:grid-cols-5 xl:grid-cols-6">
+      <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 sm:gap-2 lg:grid-cols-5 xl:grid-cols-6">
         {items.map((item) => (
           <MediaTile
             key={item.id}
@@ -59,6 +61,7 @@ export function Gallery({
             selectionMode={selectionMode}
             onOpen={onOpen}
             onToggleSelect={onToggleSelect}
+            onLongPress={onLongPress}
           />
         ))}
 
@@ -71,7 +74,7 @@ export function Gallery({
       <div ref={sentinelRef} className="h-4" aria-hidden />
 
       {!hasNextPage && items.length > 24 && (
-        <p className="py-8 text-center text-sm text-muted-foreground">
+        <p className="py-8 text-center text-caption text-muted-foreground">
           That's everything — {items.length.toLocaleString()} memories.
         </p>
       )}
@@ -81,7 +84,7 @@ export function Gallery({
 
 export function GallerySkeleton() {
   return (
-    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2 lg:grid-cols-5 xl:grid-cols-6">
+    <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 sm:gap-2 lg:grid-cols-5 xl:grid-cols-6">
       {Array.from({ length: 18 }).map((_, index) => (
         <Skeleton key={index} className="aspect-square w-full" />
       ))}

@@ -3,25 +3,35 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+/**
+ * Pill CTAs with inset depth, per the system: the primary fill is the near-black
+ * action colour and there is exactly one per screen. Heights start at 44px so
+ * every control clears the minimum touch target on a phone.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-pill font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 active:scale-[0.97] [&_svg]:size-[18px] [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-soft hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-soft hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        default: "btn-depth bg-primary text-primary-foreground hover:bg-primary/90",
+        brand:
+          "btn-depth bg-brand-indigo text-white hover:brightness-[1.06]",
+        destructive: "btn-depth bg-destructive text-destructive-foreground hover:bg-destructive/92",
+        outline:
+          "border border-border bg-card text-foreground hover:bg-secondary active:bg-secondary",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        glass: "border border-white/20 bg-white/10 text-white backdrop-blur-md hover:bg-white/20",
+        ghost: "text-foreground hover:bg-secondary active:bg-secondary",
+        link: "text-brand-indigo underline-offset-4 hover:underline",
+        glass:
+          "border border-white/15 bg-white/12 text-white backdrop-blur-md hover:bg-white/20",
       },
       size: {
-        default: "h-11 px-5 py-2",
-        sm: "h-9 px-4 text-[13px]",
-        lg: "h-14 px-8 text-base",
+        default: "h-11 px-5 text-button",
+        sm: "h-10 px-4 text-label",
+        lg: "h-14 px-8 text-body",
         icon: "h-11 w-11",
         "icon-sm": "h-9 w-9",
+        "icon-lg": "h-12 w-12",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

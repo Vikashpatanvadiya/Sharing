@@ -31,6 +31,7 @@ import {
   deleteAlbum,
   findAlbumByCode,
   joinAlbum,
+  listAlbumMembers,
   listContributors,
   regenerateJoinCode,
   revealJoinCode,
@@ -130,7 +131,7 @@ albumsRouter.post("/join", joinLimiter, async (req, res, next) => {
     const access = await resolveAlbumAccess(req, res, album.id);
     if (!access) throw notFound(ALBUM_NOT_FOUND_MESSAGE);
 
-    res.json(albumResponse(access, await toAlbumSummary(album)));
+    res.json(albumResponse(access, await toAlbumSummary(album, access)));
   } catch (error) {
     next(error);
   }
@@ -146,7 +147,7 @@ albumsRouter.get("/mine", async (req, res, next) => {
       const access = await resolveAlbumAccess(req, res, id);
       if (!access) continue;
       results.push({
-        album: await toAlbumSummary(access.album),
+        album: await toAlbumSummary(access.album, access),
         role: access.role,
       });
     }
@@ -163,7 +164,7 @@ albumsRouter.get("/mine", async (req, res, next) => {
 albumsRouter.get("/:albumId", requireAlbumAccess, async (req, res, next) => {
   try {
     const access = requireAccess(req);
-    res.json(albumResponse(access, await toAlbumSummary(access.album)));
+    res.json(albumResponse(access, await toAlbumSummary(access.album, access)));
   } catch (error) {
     next(error);
   }
@@ -249,6 +250,16 @@ albumsRouter.post("/:albumId/leave", requireAlbumAccess, async (req, res, next) 
 /* -------------------------------------------------------------------------- */
 /* Gallery                                                                    */
 /* -------------------------------------------------------------------------- */
+
+/** The album's members, so anyone can choose who to share a photo with. */
+albumsRouter.get("/:albumId/members", requireAlbumAccess, async (req, res, next) => {
+  try {
+    const access = requireAccess(req);
+    res.json({ members: await listAlbumMembers(access) });
+  } catch (error) {
+    next(error);
+  }
+});
 
 albumsRouter.get("/:albumId/media", requireAlbumAccess, async (req, res, next) => {
   try {

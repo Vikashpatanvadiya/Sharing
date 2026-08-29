@@ -1,9 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Logo } from "@/components/Logo";
+import { AppBar } from "@/components/AppBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,9 +59,9 @@ export default function JoinAlbumPage() {
   if (step === "name") {
     return (
       <div className="container flex min-h-[100dvh] max-w-md flex-col justify-center py-12">
-        <div className="animate-fade-in rounded-3xl border border-border bg-card p-8 shadow-lift">
-          <h1 className="text-2xl font-bold tracking-tight">What's your name?</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+        <div className="animate-fade-in rounded-panel border border-border bg-card p-7">
+          <h1 className="font-display text-section">What's your name?</h1>
+          <p className="mt-2 text-label text-text-tertiary">
             So everyone knows who added which photos. You can skip this.
           </p>
 
@@ -100,24 +100,17 @@ export default function JoinAlbumPage() {
   }
 
   return (
-    <div className="container max-w-md py-8 sm:py-12">
-      <div className="mb-10 flex items-center justify-between">
-        <Logo />
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-        </Button>
-      </div>
+    <div className="min-h-[100dvh]">
+      <AppBar title="Join album" onBack={() => navigate("/")} />
 
-      <div className="rounded-3xl border border-border bg-card p-8 shadow-soft">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+      <div className="container max-w-md pb-12 pt-6">
+      <div className="rounded-panel border border-border bg-card p-7">
+        <span className="flex h-12 w-12 items-center justify-center rounded-panel bg-accent text-accent-foreground">
           <KeyRound className="h-6 w-6" />
         </span>
 
-        <h1 className="mt-5 text-2xl font-bold tracking-tight">Join an album</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="mt-5 font-display text-section">Join an album</h1>
+        <p className="mt-2 text-label text-text-tertiary">
           Enter the code the album creator shared with you.
         </p>
 
@@ -144,7 +137,7 @@ export default function JoinAlbumPage() {
                 setCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12));
               }}
               placeholder="G7X92P"
-              className="h-16 text-center font-mono text-2xl font-semibold uppercase tracking-[0.4em]"
+              className="h-16 text-center text-[28px] font-bold uppercase tracking-[0.32em]"
               autoCapitalize="characters"
               autoCorrect="off"
               spellCheck={false}
@@ -171,12 +164,13 @@ export default function JoinAlbumPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        Don't have a code?{" "}
-        <Link href="/create" className="font-medium text-primary hover:underline">
-          Create your own album
-        </Link>
-      </p>
+        <p className="mt-6 text-center text-label text-text-tertiary">
+          Don't have a code?{" "}
+          <Link href="/create" className="font-medium text-brand-indigo hover:underline">
+            Create your own album
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

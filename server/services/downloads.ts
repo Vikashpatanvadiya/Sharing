@@ -57,9 +57,11 @@ export interface CreateJobInput {
  * disk, so a 40 GB album is never held in memory — on the server or the client.
  */
 export async function createDownloadJob({ access, ownerKey, mediaIds }: CreateJobInput) {
+  // Both paths are visibility-filtered, so a restricted photo never lands in
+  // an archive built for someone who is not allowed to see it.
   const items = mediaIds?.length
-    ? await getMediaByIds(access.album.id, mediaIds)
-    : await listAllMediaForAlbum(access.album.id);
+    ? await getMediaByIds(access, mediaIds)
+    : await listAllMediaForAlbum(access);
 
   if (!items.length) {
     throw badRequest("There is nothing to download yet.");

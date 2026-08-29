@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Offline — Memento</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #fcfcfc;
+        color: #1f1f1f;
+        font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+        text-align: center;
+      }
+      .card { max-width: 22rem; }
+      h1 { font-size: 24px; margin: 20px 0 8px; letter-spacing: -0.3px; }
+      p { margin: 0; color: #666; font-size: 16px; line-height: 24px; }
+      .mark {
+        width: 64px; height: 64px; margin: 0 auto; border-radius: 16px;
+        background: linear-gradient(135deg, #f4a261, #ee7944 55%, #556adc);
+      }
+      button {
+        margin-top: 24px; min-height: 44px; padding: 0 24px; border: 0;
+        border-radius: 999px; background: #2a2c33; color: #fff;
+        font: inherit; font-size: 15px; font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="mark"></div>
+      <h1>You're offline</h1>
+      <p>Memento needs a connection to load your photos. Your uploads will resume once you're back.</p>
+      <button onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>

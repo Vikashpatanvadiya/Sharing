@@ -106,6 +106,9 @@ async function main() {
       CLOUDINARY_CLOUD_NAME: "test-cloud",
       CLOUDINARY_API_KEY: "999888777666555",
       CLOUDINARY_API_SECRET: API_SECRET,
+      // Pinned so a developer's own CLOUDINARY_FOLDER in .env cannot change
+      // the public_id prefix the assertions rely on.
+      CLOUDINARY_FOLDER: "shared-albums",
       DOWNLOAD_TMP_DIR: path.join(tmpDir, "downloads"),
       RATE_LIMIT_IN_DEV: "",
     });
@@ -130,7 +133,11 @@ async function main() {
       return response;
     };
 
-    for (const modulePath of ["./integration/01-albums.test.mjs", "./integration/02-downloads.test.mjs"]) {
+    for (const modulePath of [
+      "./integration/01-albums.test.mjs",
+      "./integration/02-downloads.test.mjs",
+      "./integration/04-visibility.test.mjs",
+    ]) {
       const suite = await import(modulePath);
       const { results, check, section } = createReporter(suite.name);
       console.log(`\n=== ${suite.name} ===`);
@@ -186,6 +193,7 @@ async function main() {
         CLOUDINARY_CLOUD_NAME: "test-cloud",
         CLOUDINARY_API_KEY: "999888777666555",
         CLOUDINARY_API_SECRET: API_SECRET,
+        CLOUDINARY_FOLDER: "shared-albums",
         CLOUDINARY_API_BASE: `https://127.0.0.1:${mock.port}`,
         DOWNLOAD_TMP_DIR: path.join(tmpDir, "downloads-b"),
         RATE_LIMIT_IN_DEV: "1",

@@ -1,5 +1,6 @@
 import type {
   AdminDashboard,
+  AlbumMember,
   AlbumResponse,
   AlbumSummary,
   AppConfigResponse,
@@ -144,6 +145,17 @@ export const api = {
     request<{ ok: true }>(`/api/albums/${albumId}/media/discard`, {
       method: "POST",
       json: { publicId, resourceType },
+    }),
+
+  albumMembers: (albumId: string) =>
+    request<{ members: AlbumMember[] }>(`/api/albums/${albumId}/members`),
+
+  getMedia: (mediaId: string) => request<{ media: MediaItem }>(`/api/media/${mediaId}`),
+
+  setMediaVisibility: (mediaId: string, restricted: boolean, contributorIds: string[]) =>
+    request<{ media: MediaItem }>(`/api/media/${mediaId}/visibility`, {
+      method: "PATCH",
+      json: { restricted, contributorIds },
     }),
 
   deleteMedia: (mediaId: string) =>

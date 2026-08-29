@@ -5,6 +5,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -109,6 +110,13 @@ export const media = pgTable(
     /** Cloudinary etag / client checksum, used for duplicate detection. */
     checksum: varchar("checksum", { length: 128 }),
 
+    /**
+     * "album"      — everyone in the album can see it (the default)
+     * "restricted" — only the uploader, the admin, and the contributors listed
+     *                in `media_visibility` can see it
+     */
+    visibility: varchar("visibility", { length: 16 }).notNull().default("album"),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -120,6 +128,30 @@ export const media = pgTable(
     albumFeedIdx: index("media_album_feed_idx").on(table.albumId, table.createdAt, table.id),
     publicIdIdx: uniqueIndex("media_cloudinary_public_id_idx").on(table.cloudinaryPublicId),
     checksumIdx: index("media_album_checksum_idx").on(table.albumId, table.checksum),
+    /** Lets the gallery skip the visibility join for unrestricted albums. */
+    visibilityIdx: index("media_album_visibility_idx").on(table.albumId, table.visibility),
+  }),
+);
+
+/**
+ * The allow-list for a restricted media item. A row here means "this
+ * contributor may see this photo". Absent rows mean no access — the uploader
+ * and the album admin are allowed implicitly and are never stored here.
+ */
+export const mediaVisibility = pgTable(
+  "media_visibility",
+  {
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => media.id, { onDelete: "cascade" }),
+    contributorId: uuid("contributor_id")
+      .notNull()
+      .references(() => contributors.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.mediaId, table.contributorId] }),
+    contributorIdx: index("media_visibility_contributor_idx").on(table.contributorId),
   }),
 );
 
@@ -181,9 +213,18 @@ export const contributorsRelations = relations(contributors, ({ one, many }) => 
   media: many(media),
 }));
 
-export const mediaRelations = relations(media, ({ one }) => ({
+export const mediaRelations = relations(media, ({ one, many }) => ({
   album: one(albums, { fields: [media.albumId], references: [albums.id] }),
   contributor: one(contributors, { fields: [media.contributorId], references: [contributors.id] }),
+  visibleTo: many(mediaVisibility),
+}));
+
+export const mediaVisibilityRelations = relations(mediaVisibility, ({ one }) => ({
+  media: one(media, { fields: [mediaVisibility.mediaId], references: [media.id] }),
+  contributor: one(contributors, {
+    fields: [mediaVisibility.contributorId],
+    references: [contributors.id],
+  }),
 }));
 
 export type Album = typeof albums.$inferSelect;
@@ -192,6 +233,7 @@ export type Contributor = typeof contributors.$inferSelect;
 export type NewContributor = typeof contributors.$inferInsert;
 export type Media = typeof media.$inferSelect;
 export type NewMedia = typeof media.$inferInsert;
+export type MediaVisibilityRow = typeof mediaVisibility.$inferSelect;
 export type DownloadJobRow = typeof downloadJobs.$inferSelect;
 
 export const nowSql = sql`now()`;
