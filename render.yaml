@@ -1,0 +1,62 @@
+# Render Blueprint. In the Render dashboard: New -> Blueprint -> point it at
+# this repository. Secrets are marked `sync: false`, so Render will prompt for
+# them instead of storing them in version control.
+services:
+  - type: web
+    name: shared-album
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+
+    # Render restarts the service if this stops returning 200.
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render injects PORT itself; the app reads it. Do not set it here.
+
+      # --- Secrets: entered in the dashboard, never committed ---------------
+      - key: DATABASE_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+
+      # Must match the service's public URL exactly, or CSRF origin checks
+      # reject every write and share links point at the wrong host.
+      - key: PUBLIC_ORIGIN
+        sync: false
+
+      # --- Tunables ---------------------------------------------------------
+      - key: CLOUDINARY_FOLDER
+        value: shared-albums
+      - key: MAX_IMAGE_SIZE_MB
+        value: "100"
+      - key: MAX_VIDEO_SIZE_MB
+        value: "2000"
+      - key: DOWNLOAD_TMP_DIR
+        value: /tmp/shared-album-downloads
+      - key: DOWNLOAD_TTL_MINUTES
+        value: "30"
+
+    # A prepared ZIP lives on the instance that built it. On the free plan the
+    # filesystem is ephemeral and the service sleeps when idle, so an archive
+    # can vanish before it is fetched; the app reports "expired" and the user
+    # can prepare it again. To make archives durable, move to a paid instance
+    # and attach a disk, then point DOWNLOAD_TMP_DIR at its mount path:
+    #
+    # disk:
+    #   name: downloads
+    #   mountPath: /var/data
+    #   sizeGB: 10
