@@ -59,7 +59,13 @@ if (untouched.length) {
   else process.exit(1);
 }
 
-const parsed = schema.safeParse(process.env);
+// Vercel injects unset optional vars as empty strings. Strip them so Zod
+// defaults kick in instead of failing coercion (e.g. z.coerce.number() on "").
+const rawEnv = Object.fromEntries(
+  Object.entries(process.env).map(([k, v]) => [k, v === "" ? undefined : v]),
+);
+
+const parsed = schema.safeParse(rawEnv);
 
 if (!parsed.success) {
   const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");
