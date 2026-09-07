@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Switch } from "wouter";
+import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from "@/components/ui/toaster";
 import { SiteFooter } from "@/components/SiteFooter";
 import AlbumPage from "@/pages/Album";
@@ -34,6 +35,7 @@ export default function App() {
         <SiteFooter />
       </div>
       <Toaster />
+      <Analytics />
     </QueryClientProvider>
   );
 }
